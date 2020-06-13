@@ -1,4 +1,4 @@
-# XMLMappingCreation
+# XML Mapping Creation
 XML Mapping Creation Tool (conduent)
 
 This GUI tool is created to handle to the bakcend work which includes Informatica Mapping creation using XML transforation in Informatica itself.
