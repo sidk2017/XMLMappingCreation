@@ -1,0 +1,11 @@
+1. Database structure script => enhance 
+2. Main script to call the Db script (to run when db in src file.) &  main mapping, import to repository and run it.
+3. Seprate script to generate argument and template file.
+4.Parameters to be pass to Main mapping using prm file.
+
+
+argument and template file.
+selectino criteria
+extr_date
+year_beg_dt
+frequency
