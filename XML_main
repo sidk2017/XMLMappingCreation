@@ -1,0 +1,717 @@
+import tkinter as tk
+from ftplib import FTP
+from tkinter import *
+from tkinter import messagebox
+import paramiko
+from functools import partial
+import csv
+import sys
+import os
+
+r = tk.Tk()
+r.title('XML Tool')
+#r.geometry('1200x500')
+
+global src_fields
+global tgt_fields
+global src_length
+global tgt_length
+global mapping_frame
+global target_frame
+global widget_dict
+global localfile
+global username
+global host
+global password
+global folder_list
+
+
+def s1():
+    global folder_list
+    global widget_dict
+    global mapping_frame
+    # master = Tk()
+    global view_list
+    global details
+    view_list = []
+    details = []
+    global src_fields
+    global tgt_fields
+    global src_length
+    global tgt_length
+    global localfile
+    global username
+    global host
+    global password
+    folder_list = [None] * 2
+    src_fields = []
+    tgt_fields = []
+    src_length = []
+    tgt_length = []
+    widget_dict = {}
+    username = 'adcajv2'
+    host = '10.203.29.20'
+    password = 'Dec@2020'
+
+    # global Flag_entry_okay
+
+    def data_loading():
+        global src_fields
+        global src_length
+        global tgt_fields
+        global tgt_length
+        global Flag_entry_okay
+        src_fields.clear()
+        src_length.clear()
+        tgt_fields.clear()
+        tgt_length.clear()
+        Flag_entry_okay = True
+        # source data block
+        if 'FLAT_FILE' == v_src.get():
+            src_holder = T2.get("1.0", 'end').split('\n')
+            for i in range(0, len(src_holder) - 1):
+                temp_list = src_holder[i].split(' ')
+                if len(temp_list) < 3:
+                    for j in range(0, len(temp_list) - 1):
+                        src_fields.append(temp_list[j])
+                        src_length.append(temp_list[j + 1])
+                        if not (src_length[i].isdigit()):
+                            # Flag_entry_okay = False
+                            messagebox.showerror('Source error ', 'character in source length please re enter',
+                                                 icon='warning')
+                            T2.delete("1.0", 'end')
+                            # break
+                    # return True
+                else:
+                    # Flag_entry_okay = False
+                    messagebox.showerror('Source error ', 'invalid source structure please re enter',
+                                         icon='warning')
+                    T2.delete("1.0", 'end')
+                    # break
+                    # return None
+        print(src_length)
+        print(src_fields)
+        # target data block
+        tgt_holder = t_Tgt_FileStruct.get("1.0", 'end').split('\n')
+        for i in range(0, len(tgt_holder) - 1):
+            temp_list = tgt_holder[i].split(' ')
+            if len(temp_list) < 3:
+                for j in range(0, len(temp_list) - 1):
+                    tgt_fields.append(temp_list[j])
+                    tgt_length.append(temp_list[j + 1])
+                    if not (tgt_length[i].isdigit()):
+                        # Flag_entry_okay = False
+                        messagebox.showerror('Target error ', 'invalid length in target please re enter',
+                                             icon='warning')
+                        t_Tgt_FileStruct.delete("1.0", 'end')
+                        return False
+                        # break
+                # return True   #return None
+            else:
+                # Flag_entry_okay = False
+                messagebox.showerror('Target error  ', 'invalid target please re enter', icon='warning')
+                t_Tgt_FileStruct.delete("1.0", 'end')
+                print("code breaker")
+                # break
+                return False
+            print(Flag_entry_okay)
+        print(tgt_length)
+        print(tgt_fields)
+        return True
+
+    def restart_program():
+        # source_frame.configure(state='enable')
+        e1_client_name.delete(0, 'end')
+        l6.config(text=str(''))
+        l7.config(text=str(''))
+
+    def get_view(event):
+        # messagebox.showerror('client code', 'Please re-enter the code', icon='warning')
+        # source_frame.configure(state='disable')
+        global view_list
+        global v2
+        global details
+        s = e1_client_name.get()
+        command_call = 'ksh /wwmhrs/client/common/script/xml_gen_list.sh' + ' ' + s
+        command_file = 'cat /wwmhrs/client/' + s + '/data/src/' + s + '_adcajv2.dat'
+        command_details = 'cat /wwmhrs/client/' + s + '/data/src/' + s + '_adcajv2_list.dat'
+        ssh = paramiko.SSHClient()
+        ssh.load_system_host_keys()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(host, port=22, username=username, password=password)
+        cmd2 = command_call
+        cmd3 = command_file
+        cmd4 = command_details
+        ssh.exec_command(cmd2)
+        stdin, stdout3, stderr = ssh.exec_command(cmd3)
+        stdin, stdout4, stderr = ssh.exec_command(cmd4)
+        output = stdout3.readlines()
+        client_details = stdout4.readlines()
+        try:
+            details = client_details[0].split(" ")
+            view = output[0].split(" ")
+            # view_list.clear()
+            view_list = view
+            # v2 = tk.StringVar(r)
+            # v2.set(view_list[0])
+            print(view_list)
+            print(details)
+            update_option_menu()
+            fill_details()
+            # source_frame.configure(state='enable')
+        except Exception:
+            messagebox.showerror('client code', 'Please re-enter the code', icon='warning')
+            restart_program()
+
+    def update_option_menu():
+        menu = dp3["menu"]
+        menu.delete(0, 'end')
+        for string in view_list:
+            menu.add_command(label=string, command=lambda value=string: v2.set(value))
+
+    def fill_details():
+        global folder_list
+        # v1=e1_client_name.get()
+        client_code = details[0]
+        folder_name = "WWMHRS-" + details[2].replace('\n', '')
+        folder_name_1 = "WWRSRCH-" + details[2].replace('\n', '')
+        Source_db = details[1]
+        folder_list.clear()
+        folder_list.append(folder_name)
+        folder_list.append(folder_name_1)
+        print(folder_list)
+        om_src_flder.grid()
+        l6.config(text=str(client_code))
+        l7.config(text=str(folder_name))        # folder name
+        db_label.config(text=str(Source_db))
+        # t1.grid()
+
+    def dbtypetrace(*args):
+        dbtype = v_src.get()
+        if dbtype == "FLAT_FILE":
+            l11.grid_remove()
+            l16.grid_remove()
+            dp3.grid_remove()
+            T1.grid_remove()
+            S1.grid_remove()
+            db_label.grid_remove()
+            l_src_db.grid_remove()
+            l10.grid()
+            l13.grid()
+            l17.grid()
+            dp2.grid()
+            T2.grid()
+            S2.grid()
+            e3.grid()
+            # source_frame.grid()
+        elif dbtype == "SYBASE":
+            l13.grid_remove()
+            l10.grid_remove()
+            l17.grid_remove()
+            dp2.grid_remove()
+            T2.grid_remove()
+            e3.grid_remove()
+            l18.grid_remove()
+            e4.grid_remove()
+            S2.grid_remove()
+            l11.grid()
+            # l12.grid()
+            l16.grid()
+            dp3.grid()
+            T1.grid()
+            S1.grid()
+            db_label.grid()
+            l_src_db.grid()
+            # source_frame.grid()
+        else:
+            l13.grid_remove()
+            l10.grid_remove()
+            l17.grid_remove()
+            dp2.grid_remove()
+            T2.grid_remove()
+            S2.grid_remove()
+            S1.grid_remove()
+            e3.grid_remove()
+            l11.grid_remove()
+            # l12.grid_remove()
+            l16.grid_remove()
+            dp3.grid_remove()
+            T1.grid_remove()
+            e4.grid_remove()
+            db_label.grid_remove()
+            l_src_db.grid_remove()
+        # source_frame.grid()
+
+    def delimtrace(*args):
+        delimtype = v1.get()
+        if delimtype == "Other":
+            l18.grid()
+            e4.grid()
+        else:
+            e4.grid_remove()
+            l18.grid_remove()
+
+    DB_TYPE = ["FLAT_FILE", "SYBASE"]
+    DIMILITER_TYPE = ["Comma (,)", "Pipe (|)", "Fixed-Width", "Tab ('\t')", "Other"]
+    v_src = tk.StringVar(r)
+    v_src.trace("w", dbtypetrace)
+    # v.set(DB_TYPE[0])
+    v1 = tk.StringVar(r)
+    v1.set(DIMILITER_TYPE[0])
+    v1.trace("w", delimtrace)
+    v2 = tk.StringVar(r)
+    v_src_folder = tk.StringVar(r)
+    # v2.set(view_list[0])
+
+    mapping_frame = tk.LabelFrame(r, text='This is a mapping label',padx=10, pady=10, bd=5, background='green')
+    mapping_frame.grid(row=2, sticky=N)
+    source_frame = tk.LabelFrame(r, text='This is a source label',padx=10, pady=10, bd=5, width=200, height=5, background='light blue')
+    source_frame.grid(row=0, column=0, sticky=N)
+
+    # l1 = tk.Label(source_frame, text='Please fill the Source File details').grid(row=0)
+    l_client_name = tk.Label(source_frame, text='CLIENT NAME \n(Please enter the 3 characters of client name)',
+                            fg='blue', font=("Helvetica", 9), anchor=W, justify=LEFT,
+                             )
+    l_client_name.grid(row=1, column=0, sticky=W)
+    l_vendor_name = tk.Label(source_frame, text='VENDOR NAME \n(Please enter the vendor name)', anchor=W, justify=LEFT).grid(row=2, column=0, sticky=W)
+    l_client_cde = tk.Label(source_frame, text='\tCLIENT CODE :- ').grid(row=1, column=2, sticky=E)
+    l_folder_name = tk.Label(source_frame, text='\tFOLDER NAME :- ').grid(row=2, column=2, sticky=E)
+    l6 = tk.Label(source_frame, text="")
+    l6.grid(row=1, column=3, sticky=W)
+    l7 = tk.Label(source_frame, text="", anchor='s')
+    l7.grid(row=2, column=3, sticky=W)
+    #v_src_folder.set(folder_list[0])
+    #folder_list.append('')
+    print(folder_list)
+    print(v_src_folder)
+    om_src_flder = tk.OptionMenu(source_frame,v_src_folder , *folder_list)
+    print(folder_list)
+    print(v_src_folder)
+    om_src_flder.grid(row=2, column=5, sticky=E)
+    om_src_flder.grid_remove()
+    l_src_db = tk.Label(source_frame, text="SRC_DATABASE")
+    l_src_db.grid(row=5) # earliere 4
+    db_label = tk.Label(source_frame, text='')
+    db_label.grid(row=5, column=1, sticky=W)
+    db_label.grid_remove()
+    l_src_db.grid_remove()
+    e1_client_name = tk.Entry(source_frame)
+
+    e2_vendor_name = tk.Entry(source_frame)
+    e3 = tk.Entry(source_frame)
+    e4 = tk.Entry(source_frame)
+    e1_client_name.grid(row=1, column=1)
+    e2_vendor_name.grid(row=2, column=1)
+    e3.grid(row=9, column=1, sticky=E+W)        # Src file name entry
+    e3.grid_remove()
+    e4.grid(row=7, column=3)        # Other Delim entry
+    e4.grid_remove()
+    # b1 = tk.Button(r, text='click here', command=show_field)
+    # b1.grid(row=5, column=0)
+    l9 = tk.Label(source_frame, text='SOURCE TYPE')
+    l9.grid(row=4, column=0) # earlier row=5
+    l10 = tk.Label(source_frame, text='SRC DELIMITER')
+    l10.grid(row=7, column=0)
+    l10.grid_remove()
+    l18 = Label(source_frame, text='Please enter the Other Delimiter')
+    l18.grid(row=6, column=3)
+    l18.grid_remove()
+    dp1 = tk.OptionMenu(source_frame, v_src, *DB_TYPE)      # SOURCE_TYPE
+    dp1.grid(row=4, column=1, sticky=W) # CHANGED FROM ROW=6
+    dp2 = tk.OptionMenu(source_frame, v1, *DIMILITER_TYPE)      # SRC_DELIMETER
+    dp2.grid(row=7, column=1, sticky=W)
+    dp2.grid_remove()
+    dp3 = tk.OptionMenu(source_frame, v2, ' ', *view_list)      # Frquency
+    dp3.grid(row=8, column=1, sticky=W)
+    dp3.grid_remove()
+    l11 = tk.Label(source_frame, text='VENDOR FREQUENCY')
+    l11.grid(row=8, column=0)
+    l11.grid_remove()
+    # l12 = tk.Label(source_frame, text='VENDOR FREQUENCY')
+    # l12.grid(row=9, column=0)
+    # l12.grid_remove()
+    l13 = tk.Label(source_frame, text='SRC_FILE_NAME')
+    l13.grid(row=9, column=0)
+    l13.grid_remove()
+    l16 = tk.Label(source_frame, text='SELECTION (SQ Filter)')
+    l16.grid(row=11, column=0, sticky=N)
+    l16.grid_remove()
+    l19 = Label(source_frame).grid(row=10)      #Filler Label
+    l17 = tk.Label(source_frame, text='Source File Structure \n(Please enter the Field Name \nand Length of the field')
+    l17.grid(row=11, column=0, sticky=N)
+    l17.grid_remove()
+    # l15 = tk.Label(r, text='')
+    # l15.grid(row=9, column=1)
+    # t1 = tk.Text(source_frame, height=1, width=20)
+    # t1.grid(row=11, column=1)
+    # t1.grid_remove()
+
+    # FILE STRUCTURE
+    S2 = tk.Scrollbar(source_frame)
+    S2.grid(row=11, column=2, sticky=N+S)
+    S2.grid_remove()
+
+    T2 = tk.Text(source_frame, wrap=NONE, height=10, bd=0, width=20,yscrollcommand=S2.set)  #insertborderwidth=10,
+    T2.grid(row=11, column=1, columnspan=2, sticky=W)
+
+    S2.config(command=T2.yview)
+    T2.grid_remove()
+
+
+    # SELECTION
+    S1 = tk.Scrollbar(source_frame)
+    S1.grid(row=11, column=2, sticky=N + S)
+    S1.grid_remove()
+
+    T1 = tk.Text(source_frame, wrap=NONE, height=10, bd=0, width=20,yscrollcommand=S1.set)
+    T1.grid(row=11, column=1, columnspan=2, sticky=W)
+
+    S1.config(command=T1.yview)
+    T1.grid_remove()
+
+    e1_client_name.bind('<FocusOut>', get_view)
+
+    # dp1.bind('<Button-1>', src_file)
+
+    # dp1.bind('<Leave>',src_file)
+    def src_dilimiter(event):
+        option = v1.get()
+        if option == "OTHERS":
+            e4.grid()
+        else:
+            e4.grid_remove()
+
+    # dp2.bind('<Button-1>', src_dilimiter)
+    # dp2.bind('<Leave>',src_dilimiter)
+    # v.trace("w",src_file)
+    # Labelframe
+
+    # ------Screen2
+
+    target_frame = LabelFrame(r, text='Please fill the Target File details', padx=10, pady=10, bd=5, background='light yellow')
+    target_frame.grid(row=0, column=1, sticky=E + W)
+    target_frame.grid_remove()
+
+    def target_screen():
+        global v_tgt_flat_file
+        target_frame.grid()
+        L1 = Label(target_frame, text='Please fill the Target File details', justify=CENTER)
+        L1.grid(row=0)
+        #
+        l_Target_Type = Label(target_frame, text='Target Type', justify=LEFT)
+        l_Target_Type.grid(row=1)
+        #
+        v_tgt_flat_file = IntVar()
+        v_tgt_flat_file.set(1)
+        global r_Flat_File
+        r_Flat_File = Radiobutton(target_frame, text='Flat File', variable=v_tgt_flat_file, value=1)
+        r_Flat_File.grid(row=1, column=1, sticky=W)
+
+        L3 = Label(target_frame).grid(row=2)
+
+        l_Target_Delim = Label(target_frame,
+                               text="Target Delimeters \n(Select the Delimiter when Target file is flat file)",
+                               justify=CENTER)
+        l_Target_Delim.grid(row=3, sticky=W + E + N + S)
+
+        l_Other_Delim = Label(target_frame, text='Please enter the Other Delimiter')
+        global e_other_delim
+        e_other_delim = Entry(target_frame)
+
+        def other(*args):
+            value = v_tgt_delim.get()
+            if value == "Other":
+                # var1.set('Please enter the Other Delimiter')
+                l_Other_Delim.grid(row=2, column=3, sticky=S + W)
+                e_other_delim.grid(row=3, column=3, sticky=W)
+            else:
+                l_Other_Delim.grid_remove()
+                e_other_delim.grid_remove()
+
+        delim_options = ["Comma (,)", "Pipe (|)", "Fixed-Width", "Tab (\t)", "Other"]
+        global v_tgt_delim
+        v_tgt_delim = StringVar(target_frame)
+        v_tgt_delim.set(delim_options[0])
+        v_tgt_delim.trace("w", other)
+        om_tgt_delim = OptionMenu(target_frame, v_tgt_delim, *delim_options)
+        om_tgt_delim.grid(row=3, column=1, columnspan=2, sticky=W)
+
+        L6 = Label(target_frame).grid(row=4)
+
+        l_Tgt_FileName = Label(target_frame, text='Target File Name', justify=LEFT)
+        l_Tgt_FileName.grid(row=5)
+        global e_Tgt_FileName
+        e_Tgt_FileName = Entry(target_frame)
+        e_Tgt_FileName.grid(row=5, column=1, columnspan=2, sticky=W + E + N + S)
+
+        L8 = Label(target_frame).grid(row=6)
+
+        l_Tgt_FileStruct = Label(target_frame,
+                                 text='Target File Structure \n(Please enter the Field Name \nand Length of the field',
+                                 justify=CENTER,
+                                 )
+        l_Tgt_FileStruct.grid(row=7, sticky=N)
+
+        s_Tgt_FileStruct = tk.Scrollbar(target_frame)
+        s_Tgt_FileStruct.grid(row=7, column=3, sticky=N+S)
+        global t_Tgt_FileStruct
+        t_Tgt_FileStruct = Text(target_frame, wrap=NONE, height=10, bd=0, width=20, yscrollcommand=s_Tgt_FileStruct.set)
+
+        s_Tgt_FileStruct.config(command=t_Tgt_FileStruct.yview)
+        t_Tgt_FileStruct.grid(row=7, column=1, columnspan=2,sticky=W)
+
+    # Button used to get Value from widgets
+    def get_info():
+        global v_tgt_flat_file
+        global v_tgt_delim
+        t_type = v_tgt_flat_file.get()
+        t_delimiter = v_tgt_delim.get()
+        t_filename = e_Tgt_FileName.get()
+        # t_structure = t_Tgt_FileStruct.get("1.0", 'end')
+        # mapping_frame.destroy()
+        print(t_filename)
+        print(t_delimiter)
+        print(t_type)
+        tgt_delimiter_var = str(v_tgt_delim.get()).split(' ')
+        # print(t_structure)
+        # data_loading()  # will set a flag
+        widget_dict["source_frame_client_name"] = e1_client_name.get()
+        widget_dict["source_frame_client_code"] = l6.cget("text")
+        widget_dict["source_frame_folder_name"] = l7.cget("text")
+        widget_dict["source_frame_source_type"] = v_src.get()
+        widget_dict["source_frame_source_delimiter"] = v1.get()
+        widget_dict["source_frame_source_frequency"] = v2.get()
+        widget_dict["source_frame_source_other_delimiter"] = e4.get()
+        widget_dict["source_frame_source_database"] = db_label.cget("text")
+        widget_dict["target_frame_target_type"] = r_Flat_File.cget("text")
+        widget_dict["target_frame_target_delimiter"] = tgt_delimiter_var[0]
+        widget_dict["target_frame_target_file_name"] = e_Tgt_FileName.get()
+        # widget_dict["source_frame_target_DB_name"] = T2.get("text")
+        widget_dict["source_frame_vendor_name"] = e2_vendor_name.get()
+        widget_dict["source_frame_source_filter"] = T1.get("1.0", END)
+        flag = data_loading()
+        if flag:
+            s3()  # only call when flag is true
+            print("true")
+            # flag=''
+        else:
+            # print("grid remove")
+            mapping_frame.destroy()
+            # mapping_frame.grid()
+
+    global b_tgt_next
+    global b_src_next
+
+    def validate_src_details():
+        if e1_client_name.get()!='':
+            target_screen()
+        elif e1_client_name.get() == '':
+            messagebox.showerror('Source Details error ', 'Client Name is not valid, please re enter',
+                                 icon='warning')
+
+
+    b_tgt_next = tk.Button(target_frame, text="    Next/Validate Target details   ", command=get_info)
+    b_tgt_next.grid(row=10, column=10, sticky=E)
+
+    b_src_next = tk.Button(source_frame, text="    Next/Validate Source details   ", command=validate_src_details)
+    b_src_next.grid(row=12, column=2, sticky=E)
+
+    r.mainloop()
+
+
+def s3():
+    global src_fields
+    global tgt_fields
+    global src_length
+    global tgt_length
+    global mapping_frame
+    global widget_dict
+    global localfile
+
+    localfile = "C:\\Users\\52067484\\SRC_XML_GEN_" + username + ".csv"
+    button_position = 0
+    expression_type = ["SRC_FIELD", "EXPRESSION", "HARDCODE"]
+    mapping_src_drop_down_fields = ['SSN_NR', 'TYPE_NR', 'ID_NR']
+    mapping_frame = tk.LabelFrame(r, text='This is a mapping label')
+    mapping_frame.grid()
+    mapping_frame.grid(row=1, column=0, sticky=E + W)
+    mapping_label_list = []
+    mapping_entry_list = [None] * len(tgt_fields)
+    mapping_drop_down_list = []
+    mapping_drop_down_var_list = []
+    mapping_drop_down_src_field = [None] * len(tgt_fields)
+    mapping_drop_down_var_src_field = [None] * len(tgt_fields)
+    mapping_value_list = [None] * len(tgt_fields)
+    ENV_DICT = {'$INFA_HOME': '/dwinformatica/pc10.2.0', '$PM_HOME': '/dwinformatica/pc10.2.0',
+                '$PATH': '/opt/IBM/informix/bin:.:/sybase/OCS-16_0/bin:/production/kltools/bin:/sybase/RPL-15_0/bin:/sybase/ASEP/bin:/sybase/UAF-2_0/bin:/sybase/ASE-15_0/bin:/sybase/ASE-15_0/install:/usr/local/bin:/usr/bin:/bin:/usr/X11R6/bin:/usr/games:/usr/lib/mit/bin:/usr/lib/mit/sbin:/oracle/product/11gR2_client64/bin:/dwinformatica/pc10.2.0/server/bin:/production/infadmin/bin:/production/bin',
+                '$LD_LIBRARY_PATH': '/sybase/DataAccess64/ODBC/lib:/sybase/OCS-16_0/lib:/sybase/OCS-16_0/lib3p64:/sybase/OCS-16_0/lib3p:/sybase/DataAccess/ODBC/lib:/sybase/OCS-15_0/lib:/sybase/OCS-15_0/lib3p:/sybase/ASE-15_0/lib::/oracle/product/11gR2_client64/lib:/dwinformatica/pc10.2.0/server/bin'}
+
+    def create_target():
+        DATABASETYPE = 'Flat File'
+        DBNAME = 'File_' + str(widget_dict['source_frame_client_name']).upper()
+        NAME1 = 'TGT_hw' + str(widget_dict['source_frame_client_code']) + '_' + widget_dict['source_frame_vendor_name']
+        DELIMITER = str(widget_dict['target_frame_target_delimiter']).upper()
+        FIELD_FLAG = 'T'
+        FLDRNAME = str(widget_dict['source_frame_folder_name']).upper()
+        INPUT_OUTPUT = 'O'
+        FILENAME = str(widget_dict['target_frame_target_file_name']).upper()
+        # Target_list = []
+        # csv_row = ['']
+        with open(localfile, 'a', newline='') as writeFile:
+            writer = csv.writer(writeFile)
+            for i in range(0, len(tgt_fields)):
+                # csv_row.clear()
+                csv_row = [DATABASETYPE, DBNAME, NAME1, DELIMITER, FIELD_FLAG, str(
+                    tgt_fields[i]), tgt_length[i], FLDRNAME, mapping_value_list[
+                               i], INPUT_OUTPUT, str(mapping_drop_down_var_list[i].get()), FILENAME]
+                writer.writerow(csv_row)
+            # Target_list.append(csv_row)
+        # print(Target_list)
+        # with open('test.csv', 'w') as writeFile:
+        # writer = csv.writer(writeFile)
+        # for i in range(0, len(tgt_length)):
+        # writer.writerows(Target_list[i])
+        writeFile.close()
+
+    def src_create():
+        if widget_dict["source_frame_source_type"] == 'SYBASE':
+            DATABASETYPE = 'Sybase'
+            DBNAME = str(widget_dict['source_frame_source_database']).upper()
+            NAME1 = str(widget_dict['source_frame_source_frequency'])
+            DELIMITER = 'NA'
+            FIELD_FLAG = 'S'
+            NAME = ''
+            len = ''
+            exp = ''
+            FLDRNAME = str(widget_dict['source_frame_folder_name']).upper()
+            INPUT_OUTPUT = 'I/O'
+            FILENAME = 'NA'
+            EXP_TYPE = 'HARDCODE'
+            FILTER = widget_dict["source_frame_source_filter"]
+            csv_row = [DATABASETYPE, DBNAME, NAME1, DELIMITER, FIELD_FLAG, NAME, len, FLDRNAME, exp, INPUT_OUTPUT,
+                       EXP_TYPE,
+                       FILENAME, FILTER]
+            with open(localfile, 'a', newline='') as writeFile:
+                writer = csv.writer(writeFile)
+                writer.writerow(csv_row)
+                writeFile.close()
+
+    def ftp_ccsv():
+        global localfile
+        global username
+        global host
+        global password
+        # client = 'sge'
+        # d = datetime.datetime.now()
+        # print(d)
+        # date_time = d.strftime("%m%d%y_%M%S")
+        # temp_filename = 'SRC_XML_GEN_' + username + '.csv'
+        remotepath = '/wwmhrs/client/' + str(widget_dict['source_frame_client_name']) + '/script/'
+
+        ftp = FTP(host=host)
+        login_status = ftp.login(user=username, passwd=password)
+        print(login_status)
+        ftp.cwd(remotepath)
+        fp = open(localfile, 'rb')
+        ftp.storbinary('STOR %s' % os.path.basename(localfile), fp, 1024)
+        # print(ftp.dir())
+        ftp.close()
+
+    def run_wkf_read_log():
+        cmd_test_var = 'ssh -t adcajv2@10.203.29.20'
+        cmd_run_env_var = 'pmcmd startworkflow -sv int_DEV2 -d DOM_DEV2 -u adcajv2 -p infa123 -f WWMHRS-Common -wait -rin vendor_test -paramfile /wwmhrs/client/common/data/src/w_generic_xml_mapping_creation_vendor_test.prm w_generic_xml_mapping_creation'
+        cmd_run_main_sh ='. ./.profile; $run ksh /wwmhrs/client/common/script/xml_mapping_creation.sh ' + str(
+            widget_dict['source_frame_client_name'])
+        # cmd_run_main_sh = 'echo "abc" > /wwmhrs/client/sge/script/abc.txt'
+        print(cmd_run_main_sh)
+
+        ssh = paramiko.SSHClient()
+        ssh.load_system_host_keys()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(host, port=22, username=username, password=password)
+        #channel = ssh.invoke_shell()
+        ssh.exec_command(cmd_run_main_sh, get_pty=True)
+        #stdout1.readlines()
+        #print(stdout1)
+        #print(stderr)
+        #print((stdin))
+        ssh.close()
+
+    def csv_create():
+        for k in range(0, len(tgt_length)):
+
+            if mapping_entry_list[k] is not None:
+                mapping_value_list[k] = mapping_entry_list[k].get()
+            else:
+                mapping_value_list[k] = mapping_drop_down_var_src_field[k].get()
+        with open(localfile, 'w', newline='') as writeFile:
+            csv_header = ['DATABASETYPE', 'DBDNAME', 'NAME1', 'DELIMITERS', 'FIELD_FLAG', 'NAME', 'LENGTH', 'FLDRNAME',
+                          'EXPRESSION', 'INPUT_OUTPUT', 'EXPRESSION_TYPE', 'FILENAME', 'FILTER']
+            writer = csv.writer(writeFile)
+            writer.writerow(csv_header)
+        writeFile.close()
+        create_target()
+        src_create()
+        ftp_ccsv()
+        run_wkf_read_log()
+
+    def src_load(j, *args):
+        value_selected = (j.get())
+        drop_down_position = mapping_drop_down_var_list.index(j)
+        # print(value_selected)
+        # print(drop_down_position)
+        if value_selected == 'EXPRESSION' or value_selected == 'HARDCODE':
+            # print(mapping_drop_down_src_field[drop_down_position])
+            if mapping_drop_down_src_field[drop_down_position] is not None:
+                mapping_drop_down_src_field[drop_down_position].destroy()
+                mapping_drop_down_src_field[drop_down_position] = None
+                mapping_drop_down_var_src_field[drop_down_position] = None
+            mapping_entry = tk.Entry(mapping_frame)
+            mapping_entry.grid(row=drop_down_position, column=3)
+            mapping_entry_list[drop_down_position] = mapping_entry
+        elif value_selected == 'SRC_FIELD':
+            drop_down_var_src_fields = 'src_var' + str(drop_down_position)
+            mapping_drop_down_var_src_field[drop_down_position] = drop_down_var_src_fields
+            mapping_drop_down_var_src_field[drop_down_position] = tk.StringVar()
+            # print(mapping_drop_down_var_src_field[drop_down_position])
+            mapping_drop_down_var_src_field[drop_down_position].set(mapping_src_drop_down_fields[0])
+            if mapping_entry_list[drop_down_position] is not None:
+                mapping_entry_list[drop_down_position].destroy()
+                mapping_entry_list[drop_down_position] = None
+            # mapping_entry_list.__delitem__(drop_down_position)
+            # mapping_test_label = tk.Label(mapping_frame, text='Source drop down')
+            if mapping_drop_down_var_src_field[drop_down_position] is not None:
+                # mapping_drop_down_src_field[drop_down_position].grid_remove()
+                print(mapping_drop_down_var_src_field[drop_down_position])
+            drop_down_src_field = tk.OptionMenu(mapping_frame, mapping_drop_down_var_src_field[drop_down_position],
+                                                *mapping_src_drop_down_fields)
+            drop_down_src_field.grid(row=drop_down_position, column=3)
+            mapping_drop_down_src_field[drop_down_position] = drop_down_src_field
+
+    for i in range(0, len(tgt_fields)):
+        var_exp_name = 'v_exp_' + str(i)
+        mapping_drop_down_var_list.append(var_exp_name)
+        mapping_drop_down_var_list[i] = tk.StringVar()
+        mapping_drop_down_var_list[i].set(expression_type[0])
+        # print(mapping_drop_down_var_list[i].get())
+        mapping_drop_down_var_list[i].trace('w', partial(src_load, mapping_drop_down_var_list[i]))
+        # print(i)
+        mapping_label_text = tgt_fields[i]
+        mapping_label_name = tk.Label(mapping_frame, text=mapping_label_text)
+        mapping_label_name.grid(row=i, column=0)
+        mapping_label_list.append(mapping_label_name)
+        mapping_drop_down_name = tk.OptionMenu(mapping_frame, mapping_drop_down_var_list[i], *expression_type,
+                                               )
+        mapping_drop_down_name.grid(row=i, column=1)
+        mapping_drop_down_list.append(mapping_drop_down_name)
+        button_position = i + 1
+    # mapping_ddown_list.append(drop_down_exptype)`
+    # print(button_position)
+    file_create_button = tk.Button(mapping_frame, text=' Create File ', command=csv_create)
+    file_create_button.grid(row=button_position, column=0)
+
+
+if __name__ == '__main__':
+    # login_screen()
+    # screen2()
+    s1()
